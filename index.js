@@ -62,31 +62,43 @@ async function run() {
     app.post('/users', async (req, res) => {
       try {
         const { email, password, username, bankAccountNumber, accountType, uploadedPhoto, salary } = req.body;
-
+    
         const existingUser = await usersCollection.findOne({ email });
+    
         if (existingUser) {
-          return res.status(400).json({ message: 'Email already exists' });
+          return res.status(200).json({
+            message: "User already exists",
+            user: {
+              email: existingUser.email,
+              username: existingUser.username,
+              accountType: existingUser.accountType,
+              bankAccountNumber: existingUser.bankAccountNumber,
+              uploadedPhoto: existingUser.uploadedPhoto,
+              salary: existingUser.salary,
+            },
+          });
         }
-
-        // Hash the password before saving
-        const hashedPassword = await bcrypt.hash(password, 10);  // Hashing the password
-
+    
+        let hashedPassword = null;
+        if (password) {
+          hashedPassword = await bcrypt.hash(password, 10);
+        }
+    
         const user = {
           email,
-          password: hashedPassword, // Save hashed password
-          username,
-          bankAccountNumber,
-          accountType,
-          uploadedPhoto,
-          salary: accountType === 'HR' ? 50000 : 30000,
+          password: hashedPassword, // Can be null for Google users
+          username: username || "New Employee",
+          bankAccountNumber: bankAccountNumber || "",
+          accountType: accountType || "Employee",
+          uploadedPhoto: uploadedPhoto || "",
+          salary: salary || (accountType === "HR" ? 50000 : 30000),
           createdAt: new Date(),
         };
-
+    
         const result = await usersCollection.insertOne(user);
-
-        // Return the user data (without password)
+    
         res.status(201).json({
-          message: 'User registered successfully',
+          message: "User registered successfully",
           user: {
             email: user.email,
             username: user.username,
@@ -98,9 +110,10 @@ async function run() {
         });
       } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Error registering user' });
+        res.status(500).json({ message: "Error registering user" });
       }
     });
+    
 
     // Verify token middleware
     const verifyToken = (req, res, next) => {
@@ -161,6 +174,56 @@ app.get('/users/:email', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Error fetching user data' });
   }
 });
+// Backend: Verify employee
+app.patch('/users/:email', verifyToken, async (req, res) => {
+  try {
+    const { email } = req.params;
+    const { isVerified } = req.body; // Expecting isVerified to be true
+    
+    const user = await usersCollection.findOneAndUpdate(
+      { email },
+      { $set: { isVerified } },
+      { new: true }
+    );
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    res.json(user); // Return updated user data
+  } catch (error) {
+    console.error("Error verifying user:", error);
+    res.status(500).json({ message: "Error verifying user" });
+  }
+});
+app.put('/users/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const { password, bankAccountNumber } = req.body;
+
+    const user = await usersCollection.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    let updateData = { bankAccountNumber };
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateData.password = hashedPassword;
+    }
+
+    await usersCollection.updateOne({ email }, { $set: updateData });
+
+    res.status(200).json({ message: "User updated successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error updating user" });
+  }
+});
+
+
+
+
 
 
 
