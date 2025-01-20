@@ -5,7 +5,7 @@ const morgan = require('morgan');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion,ObjectId } = require('mongodb');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -34,6 +34,7 @@ async function run() {
   try {
     const database = client.db("usersDB");
     const usersCollection = database.collection('users');
+    const workCollection = database.collection("work"); 
 
     // JWT Generation endpoint
     app.post('/jwt', (req, res) => {
@@ -150,7 +151,7 @@ async function run() {
 app.get('/users/:email', verifyToken, async (req, res) => {
   try {
     const email = req.params.email.trim().toLowerCase(); // Optional: Normalize and convert to lowercase
-    console.log("Searching for user with email:", email); // Log the email being searched
+    console.log("Searching for user with mail:", email); // Log the email being searched
 
     // Using case-insensitive query
     const user = await usersCollection.findOne({ 
@@ -220,6 +221,101 @@ app.put('/users/:email', async (req, res) => {
     res.status(500).json({ message: "Error updating user" });
   }
 });
+
+
+
+app.get('/work/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const workEntries = await workCollection.find({ userId: new ObjectId(userId) }).toArray();
+    res.status(200).json(workEntries);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching work entries' });
+  }
+});
+
+// 2. Add a new work entry (POST /work)
+app.post('/work', async (req, res) => {
+  const { task, hoursWorked, date, userId, userEmail } = req.body;
+
+  try {
+    // Insert the new work entry into the MongoDB collection
+    const result = await workCollection.insertOne({
+      task,
+      hoursWorked,
+      date: new Date(date), // Store the date as a Date object
+      userId: new ObjectId(userId), // Make sure userId is an ObjectId
+      userEmail // Store the user's email
+    });
+    
+    // Retrieve the inserted document
+    const newWorkEntry = await workCollection.findOne({ _id: result.insertedId });
+
+    // Return the newly created entry
+    res.status(201).json(newWorkEntry);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error adding work entry' });
+  }
+});
+
+
+
+// 3. Update a work entry (PUT /work/:id)
+app.put('/work/:id', async (req, res) => {
+  const { id } = req.params;
+  const { task, hoursWorked, date } = req.body;
+
+  try {
+    const result = await workCollection.updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: { task, hoursWorked, date: new Date(date) },
+      }
+    );
+    
+    if (result.matchedCount > 0) {
+      res.status(200).json({ message: 'Work entry updated successfully' });
+    } else {
+      res.status(404).json({ error: 'Work entry not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Error updating work entry' });
+  }
+});
+app.get('/work', async (req, res) => {
+  try {
+    // Fetch all work entries from the collection
+    const workEntries = await workCollection.find().toArray();
+    
+    // Return all work entries
+    res.status(200).json(workEntries);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching work entries for all users' });
+  }
+});
+
+// 4. Delete a work entry (DELETE /work/:id)
+app.delete('/work/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await workCollection.deleteOne({ _id: new ObjectId(id) });
+    
+    if (result.deletedCount > 0) {
+      res.status(200).json({ message: 'Work entry deleted successfully' });
+    } else {
+      res.status(404).json({ error: 'Work entry not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Error deleting work entry' });
+  }
+});
+
+
+
+
 
 
 
