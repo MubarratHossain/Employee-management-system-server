@@ -52,10 +52,10 @@ This is the backend API for the Employee Management System. It provides authenti
 ### User Management
 | Method | Endpoint            | Description |
 |--------|--------------------|-------------|
-| GET    | `/users`           | Get all users (HR only) |
+| GET    | `/users`           | Get all users  |
 | GET    | `/users/:email`    | Get user by email |
 | PUT    | `/users/update/:id` | Update user details |
-| DELETE | `/users/:id`       | Delete user (HR only) |
+| DELETE | `/users/:id`       | Delete user  |
 
 ### Work Tracking
 | Method | Endpoint         | Description |
