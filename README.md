@@ -18,8 +18,8 @@ This is the backend API for the Employee Management System. It provides authenti
 ## Installation
 
 1. Clone the repository:
-   ```bash
- https://github.com/MubarratHossain/Employee-management-system-server.git
+   ```bash https://github.com/MubarratHossain/Employee-management-system-server.git
+
 
    ```
 
